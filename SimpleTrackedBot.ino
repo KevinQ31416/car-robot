@@ -1,11 +1,4 @@
-/*************************************************************
-Motor Shield 2-Channel DC Motor Demo
-by Randy Sarafan
 
-For more information see:
-https://www.instructables.com/id/Arduino-Motor-Shield-Tutorial/
-
-*************************************************************/
 /*#include <AFMotor_R4.h>
 
 // Define motor ports
