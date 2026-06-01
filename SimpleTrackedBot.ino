@@ -294,7 +294,7 @@ void moveForward()
   
   } 
 
-*/
+
 
   // Kept empty so the code does not repeat
 
