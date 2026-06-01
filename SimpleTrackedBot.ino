@@ -283,14 +283,14 @@ void moveForward()
   digitalWrite(BrkB, HIGH);  //Engage the Brake for Channel B*/
 
     //Motor A forward @ full speed
-  digitalWrite(DirA, LOW); //Establishes forward direction of Channel A
-  digitalWrite(BrkA, HIGH);   //Engage the Brake for Channel A
-  analogWrite(PwmA, 0);   //Spins the motor on Channel A at full speed
+  //digitalWrite(DirA, LOW); //Establishes forward direction of Channel A
+  //digitalWrite(BrkA, HIGH);   //Engage the Brake for Channel A
+  //analogWrite(PwmA, 0);   //Spins the motor on Channel A at full speed
 
   //Motor B forward @ half speed
-  digitalWrite(DirB, LOW);  //Establishes forward direction of Channel B
-  digitalWrite(BrkB, HIGH);   //Engage the Brake for Channel B
-  analogWrite(PwmB, 0);    //Spins the motor on Channel B at half speed
+  //digitalWrite(DirB, LOW);  //Establishes forward direction of Channel B
+  //digitalWrite(BrkB, HIGH);   //Engage the Brake for Channel B
+  //analogWrite(PwmB, 0);    //Spins the motor on Channel B at half speed
   
   } 
 
