@@ -1,69 +1,163 @@
+const int trigPin = A10; 
+const int echoPin = A11; 
 
-/*#include <AFMotor_R4.h>
+// Arduino Motor Shield R3 Pins
+int DirA = 12; 
+int BrkA = 9; 
+int PwmA = 3; 
+int DirB = 13; 
+int BrkB = 8; 
+int PwmB = 11; 
 
-// Define motor ports
-AF_DCMotor motorLeft(1);  // Connected to M1
-AF_DCMotor motorRight(2); // Connected to M2
+const int safetyDistance = 20; // Stopping threshold in cm
+long stopmsg = 0; 
+long forwardmsg = 0; 
+long count = 0; 
 
-// Define ultrasonic sensor pins
-const int trigPin = A0;
-const int echoPin = A1;
-
-// Distance threshold for stopping (in centimeters)
-const int stopDistance = 25; 
-
-void setup() {
-
-  Serial.begin(9600);
-  Serial.println("--- Robot Initialized ---");
-
-  // Initialize sensor pins
-  pinMode(trigPin, OUTPUT);
-  pinMode(echoPin, INPUT);
+void setup() { 
+  Serial.begin(9600); 
   
-  // Set initial speed (0 to 255)
-  motorLeft.setSpeed(200);
-  motorRight.setSpeed(200);
+  pinMode(trigPin, OUTPUT); 
+  pinMode(echoPin, INPUT); 
+  
+  // Setup Channel A
+  pinMode(DirA, OUTPUT); 
+  pinMode(BrkA, OUTPUT); 
+  pinMode(PwmA, OUTPUT); 
+  
+  // Setup Channel B
+  pinMode(DirB, OUTPUT); 
+  pinMode(BrkB, OUTPUT); 
+  pinMode(PwmB, OUTPUT); 
+} 
+
+void loop() { 
+  long totalDistance = 0; 
+  int validReadings = 0; 
+  
+  for(int i = 0; i < 3; i++){ 
+    long reading = getDistance(); 
+    if(reading > 0 && reading < 999){ // Ignores timeout errors
+      totalDistance += reading; 
+      validReadings++; 
+    } 
+    delay(20); 
+  } 
+  
+  // If all readings failed, assume path is clear (999 cm)
+  long averageDistance = (validReadings > 0) ? (totalDistance / validReadings) : 999; 
+  
+  Serial.print("Average Distance: "); 
+  Serial.print(averageDistance); 
+  Serial.println(" cm"); 
+  
+  // Obstacle 
+  if (averageDistance > 0 && averageDistance <= safetyDistance ) { 
+    if(stopmsg < 1) { 
+      stopmsg = 1; 
+      forwardmsg = 0; 
+    }
+    
+    Serial.println("Obstacle Detected! going back n turnin.");
+    
+    moveStop(); 
+    delay(600);
+    
+    moveBackward();
+    delay(1400); // Backing
+    
+    moveStop();
+    delay(600);
+    
+    turnRight();
+    delay(900);
+    turnrighty(); // turn time
+    delay(3000);
+    moveStop();
+    delay(1000);
+    
+  } else { 
+    moveForward(); 
+    count++; 
+    if(forwardmsg < 1) { 
+      forwardmsg = 1; 
+      stopmsg = 0; 
+    } 
+  } 
+  
+  if(forwardmsg == 1){ 
+    Serial.println("Path clear. Moving ahead..."); 
+    forwardmsg = 2; 
+  } 
+  
+  delay(50); 
+} 
+
+long getDistance() { 
+  digitalWrite(trigPin, LOW); 
+  delayMicroseconds(2); 
+  
+  digitalWrite(trigPin, HIGH); 
+  delayMicroseconds(10); 
+  digitalWrite(trigPin, LOW); 
+  
+  long duration = pulseIn(echoPin, HIGH, 30000); // 30ms timeout 
+  
+  if (duration == 0) {
+    return 999; // Safe value if out of sensor range
+  }
+  
+  long cm = (duration * 0.034) / 2; 
+  return cm; 
+} 
+
+void moveForward() { 
+  digitalWrite(DirA, HIGH); 
+  digitalWrite(BrkA, LOW); 
+  analogWrite(PwmA, 215); 
+  
+  digitalWrite(DirB, HIGH); 
+  digitalWrite(BrkB, LOW); 
+  analogWrite(PwmB, 255); 
+} 
+
+void moveBackward() { 
+  digitalWrite(DirA, LOW); // Reverse Direction
+  digitalWrite(BrkA, LOW); 
+  analogWrite(PwmA, 200);  // Slightly slower speed for stability
+  
+  digitalWrite(DirB, LOW); // Reverse Direction
+  digitalWrite(BrkB, LOW); 
+  analogWrite(PwmB, 230); 
 }
 
-void loop() {
-  long duration;
-  int distance;
+void turnRight() {
+  // Motor A drives Forward, Motor B drives Backward to spin on the spot
+  digitalWrite(DirA, HIGH); 
+  digitalWrite(BrkA, LOW); 
+  analogWrite(PwmA, 215); 
+  
+  digitalWrite(DirB, HIGH); 
+  digitalWrite(BrkB, LOW); 
+  analogWrite(PwmB, 255); 
+}
+void turnrighty(){
+  digitalWrite(DirA, HIGH);
+  digitalWrite(BrkA, LOW);
+  analogWrite(PwmA, 225);
 
-  // Clear the trigger pin
-  digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
+  digitalWrite(DirA, HIGH);
+  digitalWrite(BrkA, HIGH);
+  analogWrite(PwmA, 0);
+}
 
-  // Send a 10-microsecond pulse to trigger the sensor
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-
-  // Read the echo pin return time in microseconds
-  duration = pulseIn(echoPin, HIGH);
-
-  // Calculate distance in cm
-  distance = duration * 0.034 / 2;
-
-  Serial.print("Measured Distance: ");
-  Serial.print(distance);
-  Serial.println(" cm");
-
-  // Decision logic
-  if (distance > 0 && distance < stopDistance) {
-    // Obstacle detected: Stop immediately
-    Serial.println("Status: Obstacle detected! Motors stopped.");
-    motorLeft.run(RELEASE);
-    motorRight.run(RELEASE);
-  } else {
-    // Path is clear: Move forward
-     Serial.println("Status: Path clear. Moving forward...");
-    motorLeft.run(FORWARD);
-    motorRight.run(FORWARD);
-  }
-
-  delay(1500); // Short delay for sensor stability
-}*/
+void moveStop() { 
+  digitalWrite(BrkA, HIGH); // Force hard brake
+  digitalWrite(BrkB, HIGH); 
+  analogWrite(PwmA, 0); 
+  analogWrite(PwmB, 0); 
+}
+/*
 const int trigPin=A10;
 const int echoPin=A11;
 
@@ -200,7 +294,7 @@ void moveForward()
   
   } 
 
-
+*/
 
   // Kept empty so the code does not repeat
 
