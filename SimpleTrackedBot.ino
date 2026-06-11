@@ -9,6 +9,201 @@ int DirB = 13;
 int BrkB = 8; 
 int PwmB = 11; 
 
+int dist_disp_dly;
+int avg_dist_loop_count;
+int obstacle;
+int CmdMem;
+
+const int safetyDistance = 50; // Emergency stop distance in cm
+char command = '5';   // Default state: Stopped
+char FwdCmd = '1';   // Default state: Stopped
+
+long totalDistance;
+int validReadings;
+long averageDistance;         
+
+void setup() {
+  Serial.begin(9600);   // USB Debugging
+  Serial1.begin(9600);  // HC-05 Bluetooth Module
+  
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  
+  pinMode(DirA, OUTPUT);
+  pinMode(BrkA, OUTPUT);
+  pinMode(PwmA, OUTPUT);
+  
+  pinMode(DirB, OUTPUT);
+  pinMode(BrkB, OUTPUT);
+  pinMode(PwmB, OUTPUT);
+  
+  moveStop(); 
+}
+
+void loop() {
+  // 1. Sensor Reading & Filtering
+  
+ 
+  long reading = getDistance();
+  if(reading > 0 && reading <= 999){ // Filter out timeout (0) and false high readings
+    totalDistance += reading;
+    validReadings++;
+  }
+  
+
+  avg_dist_loop_count++;
+  if(avg_dist_loop_count>3)
+  {
+    avg_dist_loop_count=0;
+    //averageDistance = (validReadings > 0) ? (totalDistance / validReadings) : 999;
+    averageDistance=totalDistance/validReadings;
+    validReadings=0;
+    totalDistance=0;
+  }
+
+  dist_disp_dly++;
+  if(dist_disp_dly>10)
+  {
+    dist_disp_dly=0;
+    Serial.print(averageDistance);
+    Serial.print(" ");
+    Serial.println(CmdMem);
+  }
+
+    // 3. Safety Override & Movement Logic
+  // If an obstacle is detected closer than safety limit AND user tries to move forward
+  if (averageDistance <= safetyDistance) 
+  {
+    if(CmdMem==1)
+    {
+      command='5';
+      moveStop();
+      CmdMem=5;
+    }
+    obstacle=1;
+    Serial.print("Warning: Obstacle Detected! Forward blocked. Command is now :");
+    Serial.println(command);
+    Serial.print("Avg Distance :");
+    Serial.println(averageDistance);
+  }
+  else
+  {
+    obstacle=0;
+  } 
+
+  // 2. Read Bluetooth Command
+  if (Serial1.available() > 0) {
+    command = Serial1.read(); 
+    Serial.print("Received Command: ");
+    Serial.println(command);
+  }
+
+  // Execute Bluetooth command if safe
+  switch (command) {
+    case '1': // UP
+    if(obstacle==0)
+    {
+      moveForward();
+      CmdMem=1;
+    }
+      Serial.println(averageDistance);
+      break;
+    case '2': // DOWN
+      moveBackward();
+      CmdMem=2;
+      break;
+    case '3': // LEFT
+      turnLeft();
+      CmdMem=3;
+      break;
+    case '4': // RIGHT
+      turnRight();
+      CmdMem=4;
+      break;
+    case '5': // Center / Stop
+      moveStop();
+      CmdMem=5;
+      break;
+    default:
+      // Do nothing for unknown characters
+      break;
+  }
+  
+  
+  delay(300); // Balanced loop delay for smooth response
+}
+
+long getDistance() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  
+  // 20ms timeout (~340cm max range) keeps the loop snappy
+  long duration = pulseIn(echoPin, HIGH, 20000); 
+  if (duration == 0) return 999; // Return high distance if no echo
+  
+  return (duration * 0.034) / 2;
+}
+
+void moveForward() {
+  digitalWrite(DirA, HIGH);
+  digitalWrite(BrkA, LOW);
+  analogWrite(PwmA, 195); 
+  digitalWrite(DirB, HIGH);
+  digitalWrite(BrkB, LOW);
+  analogWrite(PwmB, 235);
+}
+
+void moveBackward() {
+  digitalWrite(DirA, LOW);
+  digitalWrite(BrkA, LOW);
+  analogWrite(PwmA, 190); 
+  digitalWrite(DirB, LOW);
+  digitalWrite(BrkB, LOW);
+  analogWrite(PwmB, 230);
+}
+
+void turnRight() {
+  // Motor A forward, Motor B brake (Pivot right)
+  digitalWrite(DirA, HIGH);
+  digitalWrite(BrkA, LOW);
+  analogWrite(PwmA, 215);
+  
+  digitalWrite(DirB, HIGH);
+  digitalWrite(BrkB, HIGH);
+  analogWrite(PwmB, 0);
+}
+
+void turnLeft() {
+  // Motor A brake, Motor B forward (Pivot left)
+  digitalWrite(DirA, HIGH);
+  digitalWrite(BrkA, HIGH);
+  analogWrite(PwmA, 0);
+  
+  digitalWrite(DirB, HIGH);
+  digitalWrite(BrkB, LOW);
+  analogWrite(PwmB, 255);
+}
+
+void moveStop() {
+  digitalWrite(BrkA, HIGH); 
+  digitalWrite(BrkB, HIGH); 
+  analogWrite(PwmA, 0);
+  analogWrite(PwmB, 0);
+}
+/*const int trigPin = A10; 
+const int echoPin = A11; 
+
+// Arduino Motor Shield R3 Pins
+int DirA = 12; 
+int BrkA = 9; 
+int PwmA = 3; 
+int DirB = 13; 
+int BrkB = 8; 
+int PwmB = 11; 
+
 const int safetyDistance = 20; // Stopping threshold in cm
 long stopmsg = 0; 
 long forwardmsg = 0; 
@@ -156,7 +351,7 @@ void moveStop() {
   digitalWrite(BrkB, HIGH); 
   analogWrite(PwmA, 0); 
   analogWrite(PwmB, 0); 
-}
+}*/
 /*
 const int trigPin=A10;
 const int echoPin=A11;
